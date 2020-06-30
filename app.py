@@ -2,34 +2,29 @@ import pygame
 import game_config as gc
 
 from pygame import display, event, image
-from animal import Animal
 from time import sleep
+from animal import Animal
 
-def find_index(x,y):
-    row = y//gc.IMAGE_SIZE
+def find_index_from_xy(x, y):
+    row = y // gc.IMAGE_SIZE
     col = x // gc.IMAGE_SIZE
     index = row * gc.NUM_TILES_SIDE + col
-    return index
+    return row, col, index
 
 pygame.init()
-
 display.set_caption('My Game')
 
 #create game window
-screen = display.set_mode((512,512))
+screen = display.set_mode((gc.SCREEN_SIZE, gc.SCREEN_SIZE))
 
 #Load the matched image
 matched = image.load('other_assets/matched.png')
-#overlays the image on the screen
-#screen.blit(matched,(0,0))
-#update the display
-#display.flip()
 
 running = True
 
-#Instatiate all animal tiles
+#Instantiate all animal tiles
 tiles = [Animal(i) for i in range(0, gc.NUM_TILES_TOTAL)]
-current_images = []
+current_images_displayed = []
 
 #Main game loop
 while running:
@@ -47,50 +42,49 @@ while running:
         if e.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             #find the index of the tile that was clicked
-            index = find_index(mouse_x, mouse_y)
-            #Do not match image to itself
-            if index not in current_images:
-                current_images.append(index)
-            current_images.append(index)
-            if len(current_images) > 2:
-                current_images = current_images[1:]
-            
+            row, col, index = find_index_from_xy(mouse_x, mouse_y)
+            if index not in current_images_displayed:
+                #2 pictures displayed
+                #we refresh the screen to display the clicked tile and the previously clicked tile
+                if len(current_images_displayed) > 1:
+                    current_images_displayed = current_images_displayed[1:] + [index]
+                else:
+                    current_images_displayed.append(index)
 
-    screen.fill((255,255,255))
+    screen.fill((255, 255, 255))
 
     total_skipped = 0
 
     for i, tile in enumerate(tiles):
-        #selected images are stored in current images
+        #selected imgaes are soted in current_images_displayed
         #we only display 2 images at one time and hide the other images using tile.box
-        image_i = tile.image if i in current_images else tile.box
+        current_image = tile.image if i in current_images_displayed else tile.box
 
-        #Overlays the image on the screen
-        #only display images that are not skipped
+        #screen.blit() overlays images on SCREEN
+        #Images that have already been matched will be skipped
         if not tile.skip:
-            screen.blit(image_i, (tile.col*gc.IMAGE_SIZE +gc.MARGIN, tile.row*gc.IMAGE_SIZE + gc.MARGIN))
-        else: 
+            screen.blit(current_image, (tile.col * gc.IMAGE_SIZE + gc.MARGIN, tile.row * gc.IMAGE_SIZE + gc.MARGIN))
+        else:
             total_skipped += 1
 
+    display.flip()
 
-    #Remove images if they match
-    if len(current_images) == 2:
-        idx1,idx2 = current_images
+    # Remove images if they match
+    if len(current_images_displayed) == 2:
+        idx1, idx2 = current_images_displayed
         if tiles[idx1].name == tiles[idx2].name:
             tiles[idx1].skip = True
             tiles[idx2].skip = True
-            #Display "Matched"
-            sleep(0.4)
-            screen.blit(matched,(0,0))
+            # display matched message
+            sleep(0.2)
+            screen.blit(matched, (0, 0))
             display.flip()
-            sleep(0.4)
-            #Reset current images
-            current_images = []
+            sleep(0.5)
+            #Reset current_images
+            current_images_displayed = []
 
     #If all tiles are skipped, then game is complete
     if total_skipped == len(tiles):
         running = False
 
-    display.flip()
-
-print("GoodBye!")
+print('Goodbye!')
